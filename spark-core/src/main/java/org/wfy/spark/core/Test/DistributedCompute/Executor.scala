@@ -1,6 +1,6 @@
-package org.wfy.spark.core.Test
+package org.wfy.spark.core.Test.DistributedCompute
 
-import java.io.InputStream
+import java.io.{InputStream, ObjectInputStream}
 import java.net.{ServerSocket, Socket}
 
 /**
@@ -17,8 +17,12 @@ object Executor {
     println("服务器启动，等待客户端发送信息：")
     val client: Socket = server.accept()
     val in: InputStream = client.getInputStream
-    val i: Int = in.read()
-    println("接收到数据" + i)
+
+    val objIn = new ObjectInputStream(in)
+    val task: SubTask = objIn.readObject().asInstanceOf[SubTask]
+    val ints: List[Int] = task.compute()
+    println("接收到数据" + ints)
+    in.close()
     client.close()
     server.close()
 

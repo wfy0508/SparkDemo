@@ -1,4 +1,4 @@
-package org.wfy.spark.core
+package org.wfy.spark.core.Test
 
 /**
  * @title: Test

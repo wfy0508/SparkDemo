@@ -21,7 +21,7 @@ object CreateRDDMemoryParallelize {
     // 如果获取不到，就使用当前运行环境的totalCore
     //conf.set("spark.default.parallelism", "5")
     //val rdd: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4), 2)
-    val rdd: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4))
+    val rdd: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4, 5), 3)
 
     // 将处理的数据保存为分区文件
     rdd.saveAsTextFile("output")

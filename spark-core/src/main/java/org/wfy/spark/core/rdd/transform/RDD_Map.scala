@@ -1,7 +1,7 @@
 package org.wfy.spark.core.rdd.transform
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 
 /**
  * @program: org.wfy.spark.core.rdd.transform
@@ -78,7 +78,7 @@ object RDD_Map {
     firstWordSplit.collect().foreach(println)
 
     //wordcount
-    println("--groupBy-wordcount-------------------")
+    println("--groupBy-wordCount-------------------")
     val rdd4: RDD[String] = sc.makeRDD(List("hello spark", "hello world", "hello scala"))
     val splitRdd: RDD[String] = rdd4.flatMap(_.split(" "))
     val groupRdd: RDD[(String, Iterable[String])] = splitRdd.groupBy(word => word)
@@ -87,6 +87,87 @@ object RDD_Map {
     println("\n")
     mapValuesRdd.collect().foreach(println)
 
+    println("--filter-------------------")
+    val rdd5: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4))
+    val filterRdd: RDD[Int] = rdd5.filter(_ % 2 == 0)
+    filterRdd.collect().foreach(println)
+
+    println("--filter-------------------")
+    val sampleRdd: RDD[Int] = rdd5.sample(false, 0.4, 12345)
+    sampleRdd.collect().foreach(println)
+
+    println("--distinct-------------------")
+    val rdd6: RDD[Int] = sc.makeRDD(List(1, 2, 3, 2, 4, 5, 3, 6, 2, 3, 4, 5, 2, 2, 1, 1, 2))
+    rdd6.distinct().collect().foreach(print)
+    println("\n-----")
+    rdd6.distinct(2).collect().foreach(print)
+    println()
+
+    println("--coalesce-------------------")
+    val rdd7: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4, 5, 6, 7, 8), 6)
+    println("缩减分区之前的分区信息：")
+    rdd7.mapPartitionsWithIndex(
+      (index, iter) => {
+        List(index).iterator
+      }
+    ).collect().foreach(print(_, " "))
+    println()
+    val rdd7_1: RDD[Int] = rdd7.coalesce(2)
+    println("缩减分区之后的分区信息：")
+    rdd7_1.mapPartitionsWithIndex(
+      (index, iter) => {
+        List(index).iterator
+      }
+    ).collect().foreach(print(_, " "))
+    println()
+
+    println("--coalesce-------------------")
+    val rdd8: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4, 5, 6, 7, 2, 3, 5), 2)
+    rdd8.repartition(4).mapPartitionsWithIndex(
+      (index, iter) => {
+        List(index).iterator
+      }
+    ).collect().foreach(print(_, " "))
+    println()
+
+    println("--orderBy-------------------")
+    rdd8.sortBy(x => x, true).collect().foreach(print)
+
+    println("--zip-------------------")
+    val rdd9: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4), 2)
+    val rdd10: RDD[String] = sc.makeRDD(List("5", "6", "7", "8"), 2)
+    rdd9.zip(rdd10).collect().foreach(println)
+
+    println("--partitionBy-------------------")
+    val rdd11: RDD[(Int, String)] = sc.makeRDD(Array((1, "AAA"), (2, "BBB"), (3, "CCC")), 1)
+    println("重分区之前：")
+    rdd11.mapPartitionsWithIndex(
+      (index, iter) => {
+        val part_map = scala.collection.mutable.Map[String, List[Any]]()
+        val part_name = "part_" + index
+        part_map(part_name) = List[Any]()
+        while (iter.hasNext) {
+          part_map(part_name) :+= iter.next()
+        }
+        part_map.iterator
+      }
+    ).collect().foreach(println)
+    // (part_0,List((1,AAA), (2,BBB), (3,CCC)))
+
+    println("重分区之后：")
+    rdd11.partitionBy(new HashPartitioner(2)).mapPartitionsWithIndex(
+      (index, iter) => {
+        val part_map = scala.collection.mutable.Map[String, List[Any]]()
+        val part_name = "part_" + index
+        part_map(part_name) = List[Any]()
+        while (iter.hasNext) {
+          part_map(part_name) :+= iter.next()
+        }
+        part_map.iterator
+      }
+    ).collect().foreach(println)
+    //(part_0,List((2,BBB)))
+    //(part_1,List((1,AAA), (3,CCC)))
 
     sc.stop()
   }

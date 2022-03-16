@@ -3,6 +3,10 @@ package org.wfy.spark.core.rdd.transform
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 
+import scala.math
+
+import java.io
+
 /**
  * @program: org.wfy.spark.core.rdd.transform
  * @author Summer
@@ -168,6 +172,77 @@ object RDD_Map {
     ).collect().foreach(println)
     //(part_0,List((2,BBB)))
     //(part_1,List((1,AAA), (3,CCC)))
+
+    println("--reduceByKey-------------------")
+    val rdd12: RDD[(String, Int)] = sc.makeRDD(List(("a", 5), ("b", 4), ("c", 3), ("b", 9)))
+    rdd12.reduceByKey(_ + _).collect().foreach(println)
+
+    rdd12.map(num => (num._1, 1)).reduceByKey(_ + _).collect().foreach(println)
+
+    println("--groupByKey-------------------")
+    rdd12.groupByKey().collect().foreach(println)
+
+    println("--aggregateByKey-------------------")
+    rdd12.aggregateByKey(0)(_ + _, _ + _).collect().foreach(println)
+
+    val rdd13: RDD[(String, Int)] = sc.makeRDD(List(("a", 1), ("a", 2), ("c", 3), ("b", 4), ("c", 5), ("c", 6)), 2)
+    rdd13.aggregateByKey(0)(
+      (x, y) => scala.math.max(x, y),
+      (x, y) => x + y
+    ).collect().foreach(println)
+
+    println("--foldByKey-------------------")
+    rdd13.foldByKey(0)(_ + _).collect().foreach(println)
+
+    println("--combineByKey-------------------")
+    val rdd14: RDD[(String, Int)] = sc.makeRDD(List(("a", 88), ("b", 95), ("a", 91), ("b", 93), ("a", 95), ("b", 98)))
+    rdd14.combineByKey(
+      (_, 1),
+      (acc: (Int, Int), v) => (acc._1 + v, acc._2 + 1),
+      (acc1: (Int, Int), acc2: (Int, Int)) => (acc1._1 + acc2._1, acc1._2 + acc2._2)
+    ).collect().foreach(println)
+
+    println("--sortByKey-------------------")
+    rdd14.sortByKey(true).collect().foreach(println)
+
+    println("--join-------------------")
+    val rdd15: RDD[(String, Int)] = sc.makeRDD(List(("a", 88), ("b", 95), ("c", 100)))
+    val rdd16: RDD[(String, Int)] = sc.makeRDD(List(("a", 91), ("b", 93)))
+    rdd15.join(rdd16).collect().foreach(println)
+
+    println("--leftOuterJoin-------------------")
+    rdd15.leftOuterJoin(rdd16).collect().foreach(println)
+
+    println("--cogroup-------------------")
+    rdd15.cogroup(rdd16).collect().foreach(println)
+
+    println("--Action----------------------------------------------------------------------------")
+    println("--reduce-------------------")
+    val rdd17: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4, 5))
+    val i: Int = rdd17.reduce(_ + _)
+    println(i)
+
+    println("--count-------------------")
+    println(rdd17.count())
+    println("--first-------------------")
+    println(rdd17.first())
+    println("--take-------------------")
+    println(rdd17.take(2))
+
+    println("--aggregate-------------------")
+    val rdd18: RDD[Int] = sc.makeRDD(List(1, 2, 3, 4), 8)
+    val i1: Int = rdd18.aggregate(0)(_ + _, _ + _)
+    println(i1)
+
+    println("--aggregate-------------------")
+    val i2: Int = rdd18.fold(0)(_ + _)
+    println(i2)
+
+    println("--countByKey-------------------")
+    val rdd19: RDD[(Int, String)] = sc.makeRDD(List((1, "a"), (1, "a"), (1, "a"), (2, "b"), (3, "c"), (3, "c")))
+    val result: collection.Map[Int, Long] = rdd19.countByKey()
+    print(result)
+
 
     sc.stop()
   }

@@ -7,7 +7,7 @@ import org.apache.spark.{SparkConf, SparkContext}
  * @program: org.wfy.spark.core.rdd
  * @author Summer
  * @description ${description}
- * @create 2022-03-2022/3/19 16:39
+ * @create 2022-03-19 16:39
  * */
 object ExerciseTest {
   def main(args: Array[String]): Unit = {
@@ -50,7 +50,7 @@ object ExerciseTest {
     val resultRdd: RDD[(String, List[(String, Int)])] = groupRdd.mapValues(
       iter => {
         // 迭代器不可排序，将其先转换为List再做排序
-        iter.toList.sortBy(_._2)(Ordering.Int.reverse)
+        iter.toList.sortBy(_._2)(Ordering.Int.reverse).take(3)
       }
     )
 

@@ -1,7 +1,7 @@
 package org.wfy.spark.core.rdd.partitioner
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{Partitioner, SparkConf, SparkContext}
+import org.apache.spark.{HashPartitioner, Partitioner, SparkConf, SparkContext}
 
 /**
  * @package: org.wfy.spark.core.rdd.partitioner

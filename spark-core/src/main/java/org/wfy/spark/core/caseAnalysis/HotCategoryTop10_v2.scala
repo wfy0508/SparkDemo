@@ -6,7 +6,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 /**
  * @package: org.wfy.spark.core.`case`
  * @author Summer
- * @description 统计热门品类TOP10---优化部分代码
+ * @description 统计热门品类TOP10---优化cogroup部分
  * @create 2022-03-25 16:00
  * */
 object HotCategoryTop10_v2 {
@@ -14,6 +14,8 @@ object HotCategoryTop10_v2 {
     val sc = new SparkContext(new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10"))
 
     val userData: RDD[String] = sc.textFile("data/user_visit_action.txt")
+    // 使用较多直接缓存
+    userData.cache()
 
     //TODO: 按照每个品类的点击、下单、支付的量来统计热门品类
     // 需求优化为：先按照点击数排名，靠前的就排名高；如果点击数相同，再比较下单数；下单数再相同，就比较支付数。

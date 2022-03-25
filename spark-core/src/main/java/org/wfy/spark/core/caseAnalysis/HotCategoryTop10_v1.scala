@@ -1,4 +1,4 @@
-package org.wfy.spark.core
+package org.wfy.spark.core.caseAnalysis
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
@@ -20,7 +20,7 @@ object HotCategoryTop10_v1 {
 
     // 1 首先取出点击数据，并统计每个品类的点击数量
     val clickRdd: RDD[String] = userData.filter(
-      line => {
+      (line: String) => {
         val strings: Array[String] = line.split("_")
         // 如果点击的品类ID和产品ID为-1，表示数据不是点击数据
         strings(6) != "-1"
@@ -28,15 +28,15 @@ object HotCategoryTop10_v1 {
     )
 
     val clickActionRdd: RDD[(String, Int)] = clickRdd.map(
-      line => {
+      (line: String) => {
         val strings: Array[String] = line.split("_")
         (strings(6), 1)
       }
-    ).reduceByKey(_+_)
+    ).reduceByKey(_ + _)
 
     // 2 再取出下单数据，并统计每个品类的下单数量
     val orderRdd: RDD[String] = userData.filter(
-      line => {
+      (line: String) => {
         val strings: Array[String] = line.split("_")
         // 针对于下单行为，一次可以下单多个商品，所以品类ID和产品ID可以是多个，id之间采用逗号分隔，如果本次不是下单行为，则数据采用null表示
         strings(8) != "null"
@@ -44,7 +44,7 @@ object HotCategoryTop10_v1 {
     )
     // 使用flatMap将下单中的每个品类统计出来
     val orderActionRdd: RDD[(String, Int)] = orderRdd.flatMap(
-      line => {
+      (line: String) => {
         val strings: Array[String] = line.split("_")
         val cid: String = strings(8)
         val cids: Array[String] = cid.split(",")
@@ -52,7 +52,7 @@ object HotCategoryTop10_v1 {
         // 输出((1, 1), (2, 1), (3, 1))
         cids.map((_, 1))
       }
-    ).reduceByKey(_+_)
+    ).reduceByKey(_ + _)
 
     // 3 最后取出支付数据，并统计每个品类的支付数量
     val payRdd: RDD[String] = userData.filter(
@@ -69,7 +69,7 @@ object HotCategoryTop10_v1 {
         val cate: Array[String] = payCates.split(",")
         cate.map((_, 1))
       }
-    ).reduceByKey(_+_)
+    ).reduceByKey(_ + _)
 
     // 4 使用cogroup方法合并每个品类点击、下单和支付数据
     // 目标结果为 (category_x, (click, order, pay))

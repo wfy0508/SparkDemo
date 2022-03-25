@@ -79,11 +79,11 @@ object HotCategoryTop10_v4 {
   case class HotCategory(prodId: String, var clickCnt: Int, var orderCnt: Int, var payCnt: Int)
 
   // 定义一个累加器
-  // IN: (String, String)
-  // OUT: mutable.Map[String, HotCategory]
+  // IN: (String, String) -->第一个String指商品的品类，第二个String指类型（clickType, orderType, payType）
+  // OUT: mutable.Map[String, HotCategory]-->第一个String指商品的品类，HotCategory指类型求和值（商品品类, clickSum, orderSum, paySum）
   class HotCateAcc extends AccumulatorV2[(String, String), mutable.Map[String, HotCategory]] {
 
-    private val hcMap = mutable.Map[String, HotCategory]()
+    private val hcMap: mutable.Map[String, HotCategory] = mutable.Map[String, HotCategory]()
 
     override def isZero: Boolean = {
       hcMap.isEmpty
@@ -96,7 +96,7 @@ object HotCategoryTop10_v4 {
     override def reset(): Unit = {
       hcMap.clear()
     }
-
+    //IN: (String, String) -->第一个String指商品的品类，第二个String指类型（clickType, orderType, payType）
     override def add(v: (String, String)): Unit = {
       val prodId: String = v._1
       val actionType: String = v._2
@@ -124,7 +124,6 @@ object HotCategoryTop10_v4 {
           map1.update(cid, category)
         }
       }
-
     }
 
     override def value: mutable.Map[String, HotCategory] = hcMap

@@ -1,4 +1,4 @@
-package org.wfy.spark.core.caseAnalysis
+package org.wfy.spark.core.caseAnalysis.hotCategoryTop10
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}

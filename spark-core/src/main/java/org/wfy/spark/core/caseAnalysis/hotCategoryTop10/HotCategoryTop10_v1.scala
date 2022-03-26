@@ -1,4 +1,4 @@
-package org.wfy.spark.core.caseAnalysis
+package org.wfy.spark.core.caseAnalysis.hotCategoryTop10
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
@@ -6,16 +6,14 @@ import org.apache.spark.{SparkConf, SparkContext}
 /**
  * @package: org.wfy.spark.core.`case`
  * @author Summer
- * @description 统计热门品类TOP10---优化cogroup部分
+ * @description 统计热门品类TOP10
  * @create 2022-03-25 16:00
  * */
-object HotCategoryTop10_v2 {
+object HotCategoryTop10_v1 {
   def main(args: Array[String]): Unit = {
     val sc = new SparkContext(new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10"))
 
     val userData: RDD[String] = sc.textFile("data/user_visit_action.txt")
-    // 使用较多直接缓存
-    userData.cache()
 
     //TODO: 按照每个品类的点击、下单、支付的量来统计热门品类
     // 需求优化为：先按照点击数排名，靠前的就排名高；如果点击数相同，再比较下单数；下单数再相同，就比较支付数。
@@ -75,43 +73,30 @@ object HotCategoryTop10_v2 {
 
     // 4 使用cogroup方法合并每个品类点击、下单和支付数据
     // 目标结果为 (category_x, (click, order, pay))
-    //val groupRdd: RDD[(String, (Iterable[Int], Iterable[Int], Iterable[Int]))] = clickActionRdd.cogroup(orderActionRdd, payActionRdd)
-    //!!!
-    // 使用cogroup时，如果rdd之间的分区方式不一致，可能会造成shuffle操作，这样计算消耗资源较多
-    //!!!
-    // 可以先转换rdd结构
-    //(品类ID, 点击数量) => (品类ID, (点击数量, 0, 0))
-    //(品类ID, 下单数量) => (品类ID, (0, 下单数量, 0))
-    //                => (品类ID, (点击数量, 下单数量, 0))
-    //(品类ID, 支付数量) => (品类ID, (0, 0, 支付数量))
-    //                => (品类ID, (点击数量, 下单数量, 支付数量)) 这样两两组合，得到与最终结果相同的结构
+    val groupRdd: RDD[(String, (Iterable[Int], Iterable[Int], Iterable[Int]))] = clickActionRdd.cogroup(orderActionRdd, payActionRdd)
 
-    //最终结果(品类ID, (点击数量, 下单数量, 支付数量))
-    val rdd1: RDD[(String, (Int, Int, Int))] = clickActionRdd.map {
-      case (cid, cnt) => {
-        (cid, (cnt, 0, 0))
-      }
-    }
+    // 5 使用mapValues统计每个品类的点击、下单和支付汇总数据
+    // 目标结果为 (category_x, (click_sum, order_sum, pay_sum))
+    val resultRdd: RDD[(String, (Int, Int, Int))] = groupRdd.mapValues {
+      case (clickIter, orderIter, payIter) => {
+        var clickCnt = 0
+        val iterator1: Iterator[Int] = clickIter.iterator
+        if (iterator1.hasNext) {
+          clickCnt = iterator1.next()
+        }
 
-    val rdd2: RDD[(String, (Int, Int, Int))] = orderActionRdd.map {
-      case (cid, cnt) => {
-        (cid, (0, cnt, 0))
-      }
-    }
+        var orderCnt = 0
+        val iterator2: Iterator[Int] = orderIter.iterator
+        if (iterator2.hasNext) {
+          orderCnt = iterator2.next()
+        }
 
-    val rdd3: RDD[(String, (Int, Int, Int))] = payActionRdd.map {
-      case (cid, cnt) => {
-        (cid, (0, 0, cnt))
-      }
-    }
-
-    // 使用union聚合
-    val groupRdd: RDD[(String, (Int, Int, Int))] = rdd1.union(rdd2).union(rdd3)
-
-    // 使用reduceByKey累加数据
-    val resultRdd: RDD[(String, (Int, Int, Int))] = groupRdd.reduceByKey {
-      (t1, t2) => {
-        (t1._1 + t2._1, t1._2 + t2._2, t1._3 + t2._3)
+        var payCnt = 0
+        val iterator3: Iterator[Int] = payIter.iterator
+        if (iterator3.hasNext) {
+          payCnt = iterator3.next()
+        }
+        (clickCnt, orderCnt, payCnt)
       }
     }
 

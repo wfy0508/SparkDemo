@@ -10,7 +10,7 @@ import scala.collection.mutable
 /**
  * @package: org.wfy.spark.core.`case`
  * @author Summer
- * @description 统计热门品类TOP10--使用累加器来实现，避免shuffle操作(练习编程)
+ * @description TOP10热门品类中最活跃的TOP10 sessionId
  * @create 2022-03-25 16:00
  * */
 object SessionTop10_v1 {

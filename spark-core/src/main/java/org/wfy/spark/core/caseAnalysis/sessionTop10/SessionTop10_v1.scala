@@ -16,18 +16,52 @@ import scala.collection.mutable
 object SessionTop10_v1 {
 
   def main(args: Array[String]): Unit = {
-    // 定义环境
+    // 1 定义环境
     val sc = new SparkContext(new SparkConf().setMaster("local[*]").setAppName("HotCategoryTop10"))
-    // 打开文件
+    //2 打开文件
     val userData: RDD[String] = sc.textFile("data/user_visit_action.txt")
-    //TODO: 按照每个品类的点击、下单、支付的量来统计热门品类
-    // 需求优化为：先按照点击数排名，靠前的就排名高；如果点击数相同，再比较下单数；下单数再相同，就比较支付数。
 
-    // 直接输出品类TOP10，其他内容不要
+    //TODO: TOP10热门品类中最活跃的TOP10 sessionId
+
+    // 3 品类TOP10，其他内容不要
     val categoryTop10: List[String] = hotCategoryTop10(sc, userData)
-    categoryTop10.foreach(println)
 
+    // 4 先通过filter操作，获取只有TOP10商品品类的数据
+    val filterRdd: RDD[String] = userData.filter(
+      line => {
+        val data: Array[String] = line.split("_")
+        if (categoryTop10.contains(data(6))) {
+          true
+        } else {
+          false
+        }
+      }
+    )
 
+    val groupRdd: RDD[(String, Iterable[(String, Int)])] = filterRdd.map(
+      line => {
+        val data: Array[String] = line.split("_")
+        // 1 先转换为((商品品类ID, SessionId), 1)
+        ((data(6), data(2)), 1)
+      }
+    ).reduceByKey(_ + _) // 2 聚合数据
+      .map {
+        // 转换结构((商品品类ID, SessionId), sum) => (商品品类ID, (SessionId, sum))
+        case ((k1, k2), sum) => {
+          (k1, (k2, sum))
+        }
+      }.groupByKey()
+
+    // 按照sum值进行排序，并取TOP10
+    val sortedRdd: RDD[(String, List[(String, Int)])] = groupRdd.mapValues(
+      iter => {
+        iter.toList.sortBy(_._2)(Ordering.Int.reverse).take(10)
+      }
+    )
+
+    // 打印输出
+    sortedRdd.foreach(println)
+    // 停止环境
     sc.stop()
   }
 

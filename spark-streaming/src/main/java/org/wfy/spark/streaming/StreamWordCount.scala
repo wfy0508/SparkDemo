@@ -14,7 +14,7 @@ object StreamWordCount {
   def main(args: Array[String]): Unit = {
     val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("Streaming WordCount")
     // 初始化上下文
-    val ssc = new StreamingContext(conf, batchDuration = Seconds(3))
+    val ssc = new StreamingContext(conf, Seconds(3))
     // 通过监控端口创建DStream，数据为一行一行进来
     val lineStreams: ReceiverInputDStream[String] = ssc.socketTextStream("node1", 9999)
     // 将数据切分

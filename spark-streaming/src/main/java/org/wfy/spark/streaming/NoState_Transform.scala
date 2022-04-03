@@ -10,27 +10,37 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
  * @description 有状态转换（保留之前状态）
  * @create 2022-04-03 14:54
  * */
-object StatedTransform {
+object NoState_Transform {
   def main(args: Array[String]): Unit = {
-    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("Stated Transform")
+    val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("NoState_Transform")
     // 初始化上下文
     val ssc = new StreamingContext(conf, batchDuration = Seconds(3))
-    // 设置检查点
-    ssc.checkpoint("checkpoint")
     // 监听本地9999端口
     val socket: ReceiverInputDStream[String] = ssc.socketTextStream("localhost", 9999)
 
-    val mappedDS: DStream[(String, Int)] = socket.map((_, 1))
-    //保留之前的状态，与最近的状态结合
-    val state: DStream[(String, Int)] = mappedDS.updateStateByKey(
-      (seq: Seq[Int], buff: Option[Int]) => {
-        val opt: Int = buff.getOrElse(0) + seq.sum
-        // 更新完后，再放入到缓冲区
-        Option(opt)
+    // transform与map比较
+    // 执行位置比较（算子内Executor端，算子外Driver端）
+    // transform比map多了一个在Driver端执行的步骤
+    // Code: Driver端
+    val ds1: DStream[String] = socket.transform(
+      rdd => {
+        // Code: Driver端（周期性执行）
+        rdd.map(
+          str => {
+            // Code: Executor端
+            str
+          }
+        )
       }
     )
-    // 打印输出
-    state.print()
+
+    // Code: Driver端
+    val ds2: DStream[String] = socket.map(
+      data => {
+        // Code: Executor端
+        data
+      }
+    )
 
     ssc.start()
     ssc.awaitTermination()

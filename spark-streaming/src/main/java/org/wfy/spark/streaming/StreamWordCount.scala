@@ -16,7 +16,7 @@ object StreamWordCount {
     // 初始化上下文
     val ssc = new StreamingContext(conf, batchDuration = Seconds(3))
     // 通过监控端口创建DStream，数据为一行一行进来
-    val lineStreams: ReceiverInputDStream[String] = ssc.socketTextStream("node1", 9999)
+    val lineStreams: ReceiverInputDStream[String] = ssc.socketTextStream("localhost", 9999)
     // 将数据切分
     val wordStream: DStream[String] = lineStreams.flatMap(_.split(" "))
     // 初始化单词数量

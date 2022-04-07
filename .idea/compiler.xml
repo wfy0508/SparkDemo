@@ -7,9 +7,13 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="spark-core" />
-        <module name="spark-sql" />
+        <module name="streaming-case" />
         <module name="spark-streaming" />
+        <module name="spark-sql" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="spark-case" target="8" />
+    </bytecodeTargetLevel>
   </component>
 </project>

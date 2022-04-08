@@ -29,7 +29,7 @@ object GetFromKafka {
     val kafkaDStream: InputDStream[ConsumerRecord[String, String]] = KafkaUtils.createDirectStream[String, String](
       ssc,
       LocationStrategies.PreferConsistent,
-      ConsumerStrategies.Subscribe(Set("sparkStreaming"), kafkaPara)
+      ConsumerStrategies.Subscribe[String, String](Set("sparkStreaming"), kafkaPara)
     )
 
     // 将每条消息的的K,V值取出来

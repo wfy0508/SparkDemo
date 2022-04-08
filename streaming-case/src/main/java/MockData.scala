@@ -19,9 +19,9 @@ object MockData {
       mockData().foreach(
         data => {
           //向Kafka传送数据
-          //val record = new ProducerRecord[String, String]("streaming", data)
-          //producer.send(record)
-          println(data)
+          val record = new ProducerRecord[String, String]("sparkStreaming", data)
+          producer.send(record)
+          //println(data)
         }
       )
       Thread.sleep(1000)

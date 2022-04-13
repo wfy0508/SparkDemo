@@ -20,7 +20,7 @@ import scala.collection.mutable.ListBuffer
  * @author summer
  * @date 2022-04-10 21:43
  */
-object GetAndAnalysisData {
+object ConsumerData {
   def main(args: Array[String]): Unit = {
     val conf: SparkConf = new SparkConf().setMaster("local[*]").setAppName("AD click analysis")
     val ssc = new StreamingContext(conf, Seconds(3))
@@ -92,7 +92,7 @@ object GetAndAnalysisData {
                   |""".stripMargin)
               sql2.setString(1, user)
               sql2.setString(2, user)
-              sql2.executeQuery()
+              sql2.executeUpdate()
               sql2.close()
               connection.close()
             } else {
@@ -102,9 +102,9 @@ object GetAndAnalysisData {
                 """
                   |select *
                   |from user_ad_count
-                  |where day = ?
-                  |  and user = ?
-                  |  and ad = ?
+                  |where dt = ?
+                  |  and userid = ?
+                  |  and adid = ?
                   |""".stripMargin)
               sql3.setString(1, day)
               sql3.setString(2, user)
@@ -112,8 +112,6 @@ object GetAndAnalysisData {
 
               // 查询统计表数据
               val resultSet: ResultSet = sql3.executeQuery()
-              sql3.close()
-
               if (resultSet.next()) {
                 // 如果存在数据，那么更新
                 val sql4: PreparedStatement = connection.prepareStatement(
@@ -128,8 +126,11 @@ object GetAndAnalysisData {
                 sql4.setString(2, day)
                 sql4.setString(3, user)
                 sql4.setString(4, ad)
+                // 执行更新语句
+                sql4.executeUpdate()
                 sql4.close()
 
+                // 查询执行更新操作之后的数据
                 val sql5: PreparedStatement = connection.prepareStatement(
                   """
                     |select  * from user_ad_count
@@ -138,12 +139,9 @@ object GetAndAnalysisData {
                     |  and adid = ?
                     |  and count > 30
                     |""".stripMargin)
-                val set: ResultSet = sql5.executeQuery()
-                sql5.close()
-
-                if(set.next()){
+                val resultSet1: ResultSet = sql5.executeQuery()
+                if (resultSet1.next()) {
                   // TODO 更新后的点击数据是否超过阈值，超过就将该用户加入黑名单
-                  val connection: Connection = JDBCUtil.getConnection
                   val sql6: PreparedStatement = connection.prepareStatement(
                     """
                       |insert into black_list (userid) values(?)
@@ -152,27 +150,30 @@ object GetAndAnalysisData {
                       |""".stripMargin)
                   sql6.setString(1, user)
                   sql6.setString(2, user)
-                  sql6.executeQuery()
+                  sql6.executeUpdate()
                   sql6.close()
-                  connection.close()
+
+                } else {
+                  // 如果不存在数据，就插入数据
+                  val sql7: PreparedStatement = connection.prepareStatement(
+                    """
+                      |insert into user_ad_count(dt, userid, adid, count) values(?,?,?,?)
+                      |""".stripMargin)
+                  sql7.setString(1, day)
+                  sql7.setString(2, user)
+                  sql7.setString(3, ad)
+                  sql7.setInt(4, count)
+                  sql7.executeUpdate()
+                  sql7.close()
                 }
-              } else {
-                // 如果不存在数据，就插入数据
-                val sql7: PreparedStatement = connection.prepareStatement(
-                  """
-                    |insert into user_ad_count(dt, userid, adid, count) values(?,?,?,?)
-                    |""".stripMargin)
-                sql7.setString(1, day)
-                sql7.setString(2, user)
-                sql7.setString(3, ad)
-                sql7.setInt(4, count)
+                sql5.close()
               }
-              resultSet.close()
               connection.close()
             }
           }
         }
       }
+
     )
 
     ssc.start()

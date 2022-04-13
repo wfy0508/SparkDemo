@@ -1,6 +1,4 @@
 import com.alibaba.druid.pool.DruidDataSourceFactory
-import org.apache.spark.sql.execution.datasources
-
 import java.sql.Connection
 import java.util.Properties
 import javax.sql.DataSource
@@ -8,7 +6,7 @@ import javax.sql.DataSource
 /**
  * @package:
  * @author Summer
- * @description 创建JDBC连接类
+ * @description 创建JDBC连接类，用于连接MySQL数据库
  * @create 2022-04-12 19:49
  * */
 object JDBCUtil {

@@ -10,7 +10,7 @@ import scala.util.Random
  * @description 模拟生产数据
  * @create 2022-04-07 19:50
  * */
-object MockData {
+object ProducerData {
   def main(args: Array[String]): Unit = {
     // 创建一个生产者
     val producer: KafkaProducer[String, String] = kafkaConfig("node1:9092")
@@ -21,7 +21,7 @@ object MockData {
           //向Kafka传送数据
           val record = new ProducerRecord[String, String]("sparkStreaming", data)
           producer.send(record)
-          //println(data)
+          println(data)
         }
       )
       Thread.sleep(1000)

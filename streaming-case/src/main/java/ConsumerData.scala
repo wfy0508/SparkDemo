@@ -38,10 +38,11 @@ object ConsumerData {
       }
     )
 
+    // 1 黑名单判断
     // transform可周期性执行
     val ds: DStream[((String, String, String), Int)] = AdData.transform(
       rdd => {
-        // TODO 周期性获取黑名单数据
+        // 1.1 周期性获取黑名单数据
         //结果集列表
         val blackList: ListBuffer[String] = ListBuffer[String]()
 
@@ -56,15 +57,14 @@ object ConsumerData {
         sql1.close()
         connection.close()
 
-        // 第1步检测是否在黑名单中
-        // TODO 判断点击用户是否在黑名单中
+        // 1.2 检测是否在黑名单中
         val filterRDD: RDD[AdClickData] = rdd.filter(
           data => {
             !blackList.contains(data)
           }
         )
 
-        // TODO 如果不在黑名单中，就进行数据统计(每个采集周期)
+        // 1.3 如果不在黑名单中，就进行数据统计(每个采集周期)
         filterRDD.map(
           data => {
             val sdf = new SimpleDateFormat("yyyy-MM-dd")
@@ -76,104 +76,106 @@ object ConsumerData {
         ).reduceByKey(_ + _)
       }
     )
-    // 第2步检测统计数据，更新数据库
+    ds.print()
+
+    // 2 不在黑名单的后续处理
     ds.foreachRDD(
       rdd => {
         rdd.foreach {
           case ((day, user, ad), count) => {
-            if (count > 30) {
-              // TODO 如果统计后数据超过阈值(30)，就将该用户加入黑名单
+            // 2.1 如果超过阈值（点击次数大于等于30），直接加入黑名单
+            if (count >= 30) {
               val connection: Connection = JDBCUtil.getConnection
-              val sql2: PreparedStatement = connection.prepareStatement(
+              val sql1: PreparedStatement = connection.prepareStatement(
                 """
-                  |insert into black_list (userid) values(?)
+                  |insert into black_list(userid) values(?)
                   |on duplicate key
                   |update userid = ?
                   |""".stripMargin)
-              sql2.setString(1, user)
-              sql2.setString(2, user)
-              sql2.executeUpdate()
-              sql2.close()
+              sql1.setString(1, user)
+              sql1.setString(2, user)
+              sql1.executeUpdate()
+              sql1.close()
               connection.close()
             } else {
-              // TODO 如果统计后数据没有超过阈值，就更新当天点击数据
-              val connection: Connection = JDBCUtil.getConnection
-              val sql3: PreparedStatement = connection.prepareStatement(
+              // 2.2 不超过阈值，首先查询数据是否存在
+              val connection1: Connection = JDBCUtil.getConnection
+              val sql2: PreparedStatement = connection1.prepareStatement(
                 """
-                  |select *
-                  |from user_ad_count
+                  |select * from user_ad_count
                   |where dt = ?
                   |  and userid = ?
                   |  and adid = ?
                   |""".stripMargin)
-              sql3.setString(1, day)
-              sql3.setString(2, user)
-              sql3.setString(3, ad)
-
-              // 查询统计表数据
-              val resultSet: ResultSet = sql3.executeQuery()
-              if (resultSet.next()) {
-                // 如果存在数据，那么更新
-                val sql4: PreparedStatement = connection.prepareStatement(
+              sql2.setString(1, day)
+              sql2.setString(2, user)
+              sql2.setString(3, ad)
+              val resultSet1: ResultSet = sql2.executeQuery()
+              // 2.2.1 存在就直接更新数据
+              if (resultSet1.next()) {
+                val sql3: PreparedStatement = connection1.prepareStatement(
                   """
                     |update user_ad_count
-                    |set count = count+?
+                    |set count = count+ ?
                     |where dt = ?
                     |  and userid = ?
                     |  and adid = ?
                     |""".stripMargin)
-                sql4.setInt(1, count)
-                sql4.setString(2, day)
-                sql4.setString(3, user)
-                sql4.setString(4, ad)
-                // 执行更新语句
-                sql4.executeUpdate()
-                sql4.close()
+                sql3.setInt(1, count)
+                sql3.setString(2, day)
+                sql3.setString(3, user)
+                sql3.setString(4, ad)
+                sql3.executeUpdate()
+                sql3.close()
 
-                // 查询执行更新操作之后的数据
-                val sql5: PreparedStatement = connection.prepareStatement(
+                // 2.2.2 查询更新后的数据
+                val sql4: PreparedStatement = connection1.prepareStatement(
                   """
-                    |select  * from user_ad_count
+                    |select * from user_ad_count
                     |where dt = ?
                     |  and userid = ?
                     |  and adid = ?
-                    |  and count > 30
+                    |  and count >= 30
                     |""".stripMargin)
-                val resultSet1: ResultSet = sql5.executeQuery()
-                if (resultSet1.next()) {
-                  // TODO 更新后的点击数据是否超过阈值，超过就将该用户加入黑名单
-                  val sql6: PreparedStatement = connection.prepareStatement(
+                sql4.setString(1, day)
+                sql4.setString(2, user)
+                sql4.setString(3, ad)
+                val resultSet2: ResultSet = sql4.executeQuery()
+                // 2.2.3 判断更新后的数据是否超过阈值，超过阈值插入黑名单
+                if (resultSet2.next()) {
+                  val sql5: PreparedStatement = connection1.prepareStatement(
                     """
-                      |insert into black_list (userid) values(?)
+                      |insert into black_list(userid) values(?)
                       |on duplicate key
                       |update userid = ?
                       |""".stripMargin)
-                  sql6.setString(1, user)
-                  sql6.setString(2, user)
-                  sql6.executeUpdate()
-                  sql6.close()
-
-                } else {
-                  // 如果不存在数据，就插入数据
-                  val sql7: PreparedStatement = connection.prepareStatement(
-                    """
-                      |insert into user_ad_count(dt, userid, adid, count) values(?,?,?,?)
-                      |""".stripMargin)
-                  sql7.setString(1, day)
-                  sql7.setString(2, user)
-                  sql7.setString(3, ad)
-                  sql7.setInt(4, count)
-                  sql7.executeUpdate()
-                  sql7.close()
+                  sql5.setString(1, user)
+                  sql5.setString(2, user)
+                  sql5.executeUpdate()
+                  sql5.close()
                 }
-                sql5.close()
+                resultSet2.close()
+                sql4.close()
+              } else {
+                // 2.3 不存在就插入数据
+                val sql6: PreparedStatement = connection1.prepareStatement(
+                  """
+                    |insert into user_ad_count(dt, userid, adid, count) values(?, ?, ?, ?)
+                    |""".stripMargin)
+                sql6.setString(1, day)
+                sql6.setString(2, user)
+                sql6.setString(3, ad)
+                sql6.setInt(4, count)
+                sql6.executeUpdate()
+                sql6.close()
               }
-              connection.close()
+              resultSet1.close()
+              sql2.close()
+              connection1.close()
             }
           }
         }
       }
-
     )
 
     ssc.start()

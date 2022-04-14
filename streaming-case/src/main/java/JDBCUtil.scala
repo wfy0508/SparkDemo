@@ -17,7 +17,7 @@ object JDBCUtil {
   def init() = {
     val props = new Properties()
     props.setProperty("driverClassName", "com.mysql.jdbc.Driver")
-    props.setProperty("url", "jdbc:mysql://node1:3306/spark_test")
+    props.setProperty("url", "jdbc:mysql://node1:3306/spark_test?useUnicode=true&characterEncoding=utf8")
     props.setProperty("username", "root")
     props.setProperty("password", "1004")
     props.setProperty("maxActive", "50")

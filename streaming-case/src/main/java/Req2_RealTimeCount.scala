@@ -62,6 +62,7 @@ object Req2_RealTimeCount {
                 JDBCUtil.executeUpdate(connection, sql1, Array(day, area, city, ad, sum, sum))
               }
             }
+            // c.关闭链接
             connection.close()
           }
         )

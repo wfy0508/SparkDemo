@@ -1,6 +1,6 @@
 import com.alibaba.druid.pool.DruidDataSourceFactory
 
-import java.sql.{Connection, PreparedStatement}
+import java.sql.{Connection, PreparedStatement, ResultSet}
 import java.util.Properties
 import javax.sql.DataSource
 
@@ -75,5 +75,44 @@ object JDBCUtil {
   }
 
   // 判断一个数据是否存在
+  def isExists(connection: Connection, sql: String, param: Array[Any]) = {
+    var flag: Boolean = false
+    var ps: PreparedStatement = null
+    try {
+      ps = connection.prepareStatement(sql)
+      if (param != null && param.length > 0) {
+        for (i <- param.indices) {
+          ps.setObject(i + 1, param(i))
+        }
+        flag = ps.executeQuery().next()
+        ps.close()
+      }
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
+    flag
+  }
+
+  // 获取MySQL的一条数据
+  def getMysqlData(connection: Connection, sql: String, params: Array[Any]) = {
+    var result: Long = 0L
+    var ps: PreparedStatement = null
+    try {
+      ps = connection.prepareStatement(sql)
+      for (i <- params.indices) {
+        ps.setObject(i + 1, params(i))
+      }
+      val resultSet: ResultSet = ps.executeQuery()
+      while (resultSet.next()) {
+        result = resultSet.getLong(1)
+      }
+      resultSet.close()
+      ps.close()
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
+    result
+  }
+
 
 }
